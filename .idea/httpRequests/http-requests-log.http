@@ -1,0 +1,62 @@
+GET http://localhost:10000/showBookList
+Accept:*/*
+Cache-Control:no-cache
+
+<> 2017-12-22T050944.401.txt
+
+###
+
+GET http://localhost:10000/showBookList
+Accept:*/*
+Cache-Control:no-cache
+
+<> 2017-12-22T050943.401.txt
+
+###
+
+GET http://localhost:10000/showBookList
+Accept:*/*
+Cache-Control:no-cache
+
+<> 2017-12-22T050942.401.txt
+
+###
+
+GET http://localhost:10000/showBookList
+Accept:*/*
+Cache-Control:no-cache
+
+<> 2017-12-22T050940.401.txt
+
+###
+
+GET http://localhost:10000/showBookList
+Accept:*/*
+Cache-Control:no-cache
+
+<> 2017-12-22T050819.401.txt
+
+###
+
+GET http://localhost:10000/showBookList
+Accept:*/*
+Cache-Control:no-cache
+
+<> 2017-12-22T050603.401.txt
+
+###
+
+GET http://localhost:10000/resources
+Accept:*/*
+Cache-Control:no-cache
+
+<> 2017-12-22T050550.200.txt
+
+###
+
+GET http://localhost:8080/resources
+Accept:*/*
+Cache-Control:no-cache
+
+###
+

@@ -8,29 +8,58 @@ import (
 	"strconv"
 	"strings"
 	"encoding/base64"
+	"context"
 )
 
-type Book struct {
-	Id	int	`json:"Id"`
-	Title   string	`json:"Title"`
-	Author	string	`json:"Author"`
+
+type Response struct {
+	StatusCode int
+	Msg string
 }
 
-var Port string
+type Book struct {
+	Id	int	`json:"Id, omitempty"`
+	Title   string	`json:"Title, omitempty"`
+	Author	string	`json:"Author, omitempty"`
+}
+
+var Port = "10000"
 var LoggedIn bool
+var srv *http.Server = &http.Server{Addr: ":" + Port}
 
-var books []Book
+var (
+	u = "http://localhost:" + Port
+	hello = "/"
+	showBookList = "/showBookList"
+	addBook = "/addBook"
+	editBook = "/editBook/"
+	deleteBook = "/deleteBook/"
+	welcome = "Welcome to the \"Book Server\""
+	empty = "There is no book"
+	emptyField = "contains empty field"
+	added = "added successfully"
+	wrongMethod = "requested method is not allowed"
+	wrongId = "id is required to be an integer"
+	edited = "edited successfully"
+	notFound = "requested book isn't found"
+	deleted = "deleted successfully"
+)
 
-func response(w http.ResponseWriter, statusCode int, msg string) {
-	if statusCode == http.StatusUnauthorized {
+var Books []Book
+
+func respond(w http.ResponseWriter, r Response) {
+	if r.StatusCode == http.StatusUnauthorized {
 		w.Header().Add("WWW-Authenticate", `Basic realm="Authorization Required"`)
 	}
-	w.WriteHeader(statusCode)
-	fmt.Fprintf(w, msg)
-
+	w.WriteHeader(r.StatusCode)
+	fmt.Fprintf(w, r.Msg)
 }
 
-func checkAuth(w http.ResponseWriter, r *http.Request) bool {
+func checkAuth(r *http.Request) bool {
+	//return true
+	//if !LoggedIn {
+	//	return true
+	//}
 
 	encodedInfo := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
 	if len(encodedInfo) != 2 {
@@ -38,6 +67,7 @@ func checkAuth(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	decodedInfo, err := base64.StdEncoding.DecodeString(encodedInfo[1])
+
 	if err != nil {
 		return false
 	}
@@ -54,39 +84,35 @@ func checkAuth(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func hello(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(" \"/\" page")
-	response(w, http.StatusOK, "Welcome to the \"Book Server\"")
+func Hello(r *http.Request) Response {
+	fmt.Println(r.URL, "page")
+	return  Response{http.StatusOK, welcome}
 }
 
-func showBookList(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(" \"/showBookList\" page")
+func ShowBookList(r *http.Request) Response {
+	defer fmt.Println(r.URL, "page")
 
-	if LoggedIn && !checkAuth(w, r) {
-		response(w, http.StatusUnauthorized, "unauthorized")
-		return
+	if !checkAuth(r) {
+		return Response{http.StatusUnauthorized, "unauthorized"}
 	}
 
-	if len(books) == 0 {
-		response(w, http.StatusOK, "There is no book")
-		return
+	if len(Books) == 0 {
+		return  Response{http.StatusOK, empty}
 	}
 
-	list, convertErr := json.MarshalIndent(books, "", " ")
+	list, convertErr := json.MarshalIndent(Books, "", " ")
 	if convertErr != nil {
-		response(w, http.StatusInternalServerError, "Error occured in converting into json is " + convertErr.Error())
-		return
+		return Response{http.StatusInternalServerError, "Error occured in converting into json is " + convertErr.Error()}
 	}
 
-	response(w, http.StatusOK, string(list))
+	return Response{http.StatusOK, string(list)}
 }
 
-func addBook(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(" \"addBook\" page")
+func AddBook(r *http.Request) Response {
+	defer fmt.Println(r.URL, "page")
 
-	if LoggedIn && !checkAuth(w, r) {
-		response(w, http.StatusUnauthorized, "unauthorized")
-		return
+	if !checkAuth(r) {
+		return Response{http.StatusUnauthorized, "unauthorized"}
 	}
 
 	var book Book
@@ -99,130 +125,140 @@ func addBook(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
 		if convertErr != nil {
-			response(w, http.StatusInternalServerError, "error getting json data in PUT method")
-			return
+			return Response{http.StatusInternalServerError, "error getting json data in PUT method"}
 		}
 	} else {
-		response(w, http.StatusMethodNotAllowed, "requested method is not allowed")
-		return
+		return Response{http.StatusMethodNotAllowed, wrongMethod}
 	}
 
 	if book.Title == "" || book.Author == "" {
-		response(w, http.StatusBadRequest, "contains empty field")
-		return
+		return Response{http.StatusBadRequest, emptyField}
 	}
 
-	book.Id = len(books) + 1
-	books = append(books, book)
+	book.Id = len(Books) + 1
+	Books = append(Books, book)
 
-	response(w, http.StatusOK, "added successfully")
+	return Response{http.StatusOK, added}
 }
 
-func editBook(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(" \"editBook\" page")
+func EditBook(r *http.Request) Response {
+	defer fmt.Println(r.URL, "page")
 
-	if LoggedIn && !checkAuth(w, r) {
-		response(w, http.StatusUnauthorized, "unauthorized")
-		return
+	if !checkAuth(r) {
+		return Response{http.StatusUnauthorized, "unauthorized"}
 	}
 
 	var book Book
 
 	if r.Method == "PUT" {
-		id, idErr := strconv.Atoi(r.URL.Path[len("/editBook/"):])
+		id, idErr := strconv.Atoi(r.URL.Path[len(editBook):])
 
 		if idErr != nil {
-			response(w, http.StatusBadRequest, "id is required to be an integer")
-			return
+			return Response{http.StatusBadRequest, wrongId}
 		}
 
 		convertErr := json.NewDecoder(r.Body).Decode(&book)
 		defer r.Body.Close()
 
-		fmt.Println(book)
 		if convertErr != nil {
-			response(w, http.StatusInternalServerError, "error getting json data in PUT method")
-			return
+			return Response{http.StatusInternalServerError, "error getting json data in PUT method"}
 		}
 
 		if book.Title == "" || book.Author == "" {
-			response(w, http.StatusBadRequest, "contains empty field")
-			return
+			return Response{http.StatusBadRequest, emptyField}
 		}
 
 		book.Id = id
 
-		for i, _ := range books{
+		for i, _ := range Books{
 			if i + 1 == id {
-				books[i] = book
+				Books[i] = book
 
-				response(w, http.StatusOK, "updated successfully")
-				return
+				return Response{http.StatusOK, edited}
 			}
 		}
 
-		response(w, http.StatusBadRequest, "requested book isn't found")
+		return Response{http.StatusBadRequest, notFound}
 	} else {
-		response(w, http.StatusMethodNotAllowed, "requested method is not allowed")
+		return Response{http.StatusMethodNotAllowed, wrongMethod}
 	}
 }
 
-func deleteBook(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(" \"deleteBook\" page")
+func DeleteBook(r *http.Request) Response {
+	defer fmt.Println(r.URL, " page")
 
-	if LoggedIn && !checkAuth(w, r) {
-		response(w, http.StatusUnauthorized, "unauthorized")
-		return
+	if !checkAuth(r) {
+		return Response{http.StatusUnauthorized, "unauthorized"}
 	}
 
 	if r.Method == "DELETE" {
-		id, idErr := strconv.Atoi(r.URL.Path[len("/deleteBook/"):])
+		id, idErr := strconv.Atoi(r.URL.Path[len(deleteBook):])
 
 		if idErr != nil {
-			response(w, http.StatusBadRequest, "id is required to be an integer")
-			return
+			return Response{http.StatusBadRequest, wrongId}
 		}
 
-		for i, _ := range books{
+		for i, _ := range Books{
 			if i + 1 == id {
-				books = append(books[:i], books[i+1:]...)
-				for j, _ := range books {
-					books[j].Id = j + 1
+				Books = append(Books[:i], Books[i+1:]...)
+				for j, _ := range Books {
+					Books[j].Id = j + 1
 				}
 
-				response(w, http.StatusOK, "deleted successfully")
-				return
+				return Response{http.StatusOK, deleted}
 			}
 		}
 
-		response(w, http.StatusBadRequest, "requested book isn't found")
+		return Response{http.StatusBadRequest, notFound}
 	} else {
-		response(w, http.StatusMethodNotAllowed, "requested method is not allowed")
+		return Response{http.StatusMethodNotAllowed, wrongMethod}
 	}
 }
 
-func HandleRequests(port string, loggedIn bool) {
-	Port = ":" + port
+func HandleRequests() {
+
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		respond(w, Hello(r))
+	})
+	http.HandleFunc("/showBookList", func (w http.ResponseWriter, r *http.Request) {
+		respond(w, ShowBookList(r))
+	})
+	http.HandleFunc("/addBook", func(w http.ResponseWriter, r *http.Request) {
+		respond(w, AddBook(r))
+	})
+	http.HandleFunc("/editBook/", func(w http.ResponseWriter, r *http.Request) {
+		respond(w, EditBook(r))
+	})
+	http.HandleFunc("/deleteBook/", func(w http.ResponseWriter, r *http.Request) {
+		respond(w, DeleteBook(r))
+	})
+
+
+}
+
+func StartServer(port string, loggedIn bool) {
+	Port = port
 	LoggedIn = loggedIn
 
-	//if loggedIn {
-	//
-	//}
-
-	http.HandleFunc("/", hello)
-	http.HandleFunc("/showBookList", showBookList)
-	http.HandleFunc("/addBook", addBook)
-	http.HandleFunc("/editBook/", editBook)
-	http.HandleFunc("/deleteBook/", deleteBook)
-
-	serverErr :=http.ListenAndServe(Port, nil)
+	srv.Addr = ":" + Port
+	serverErr := srv.ListenAndServe()
 
 	if serverErr != nil {
 		log.Fatal("Server Error:", serverErr)
 	}
 }
 
+func ShutdownServer() {
+	if err := srv.Shutdown(context.Background()); err != nil {
+		// Error from closing listeners, or context timeout:
+		log.Fatalf("HTTP server Shutdown: %v", err)
+	}
+}
+
 func main() {
-	HandleRequests("8080", true)
+	HandleRequests()
+	StartServer("8080", true)
+	ShutdownServer()
 }
 

@@ -20,7 +20,7 @@ import (
 
 	//homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"Book-Server/book_server"
+	"Go-Practice/Book-Server-by-glide/book_server"
 	//"github.com/spf13/viper"
 )
 
@@ -37,7 +37,9 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		book_server.HandleRequests(port, loggedIn)
+		book_server.HandleRequests()
+		//defer book_server.ShutdownServer()
+		book_server.StartServer(port, loggedIn)
 	},
 }
 
