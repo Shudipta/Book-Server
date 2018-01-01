@@ -14,7 +14,7 @@
 
 package main
 
-import "Go-Practice/Book-Server-by-glide/cmd"
+import "Go-Practice/https-book-server/cmd"
 
 func main() {
 	cmd.Execute()

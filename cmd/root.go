@@ -20,7 +20,6 @@ import (
 
 	//homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"Go-Practice/Book-Server-by-glide/book_server"
 	//"github.com/spf13/viper"
 )
 
@@ -36,11 +35,11 @@ var rootCmd = &cobra.Command{
 	Long: `A simple Book Server`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	Run: func(cmd *cobra.Command, args []string) {
-		book_server.HandleRequests()
-		//defer book_server.ShutdownServer()
-		book_server.StartServer(port, loggedIn)
-	},
+	//Run: func(cmd *cobra.Command, args []string) {
+	//	book_server.HandleRequests()
+	//	//defer book_server.ShutdownServer()
+	//	book_server.StartServer(port, loggedIn)
+	//},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -53,6 +52,6 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&port, "port", ":8080", "it is Port no.(default: 8080)")
+	rootCmd.PersistentFlags().StringVar(&port, "port", "8080", "it is Port no.(default: 8080)")
 	rootCmd.PersistentFlags().BoolVar(&loggedIn, "logIn", false, "it is for checking whether the user is logged in or not")
 }

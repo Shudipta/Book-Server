@@ -25,7 +25,7 @@ type Book struct {
 
 var Port = "10000"
 var LoggedIn bool
-var srv *http.Server = &http.Server{Addr: ":" + Port}
+var srv *http.Server = &http.Server{Addr: Port}
 
 var (
 	u = "http://localhost:" + Port
@@ -242,6 +242,7 @@ func StartServer(port string, loggedIn bool) {
 	LoggedIn = loggedIn
 
 	srv.Addr = ":" + Port
+	fmt.Println("---------->", srv.Addr)
 	serverErr := srv.ListenAndServe()
 
 	if serverErr != nil {
